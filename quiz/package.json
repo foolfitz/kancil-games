@@ -3,6 +3,12 @@
     "version": "0.0.0",
     "private": true,
     "description": "選擇題（docs/SPEC.md 7.5）",
+    "license": "AGPL-3.0-or-later",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/foolfitz/kancil-games.git",
+        "directory": "quiz"
+    },
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
