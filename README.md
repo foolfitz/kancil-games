@@ -2,10 +2,10 @@
 
 [Kancil Quiz](https://github.com/foolfitz/kancil-quiz) 內建的計分遊戲：
 
-| 目錄 | 套件 | 遊戲 |
-|---|---|---|
-| `quiz/` | `@kancil-quiz/game-quiz` | 選擇題 |
-| `match-up/` | `@kancil-quiz/game-match-up` | 配對 |
+| 目錄        | 套件                         | 遊戲   |
+| ----------- | ---------------------------- | ------ |
+| `quiz/`     | `@kancil-quiz/game-quiz`     | 選擇題 |
+| `match-up/` | `@kancil-quiz/game-match-up` | 配對   |
 
 不計分的互動教材（字卡、圖卡牆、轉盤）在 [kancil-materials](https://github.com/foolfitz/kancil-materials)；可以單獨執行的迷宮問答在 [maze-quiz](https://github.com/foolfitz/maze-quiz)。
 
