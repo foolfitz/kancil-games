@@ -1,0 +1,21 @@
+{
+    "name": "@kancil-quiz/game-balloon-archer",
+    "version": "0.0.0",
+    "private": true,
+    "description": "射氣球（docs/SPEC.md 7.5）",
+    "license": "AGPL-3.0-or-later",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/foolfitz/kancil-games.git",
+        "directory": "balloon-archer"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./meta": "./src/meta.ts"
+    },
+    "dependencies": {
+        "@kancil-quiz/arcade": "*",
+        "@kancil-quiz/games-sdk": "*"
+    }
+}

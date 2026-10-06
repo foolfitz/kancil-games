@@ -1,0 +1,669 @@
+/* 所有樣式都限定在 .kq-archer 之下，不影響宿主頁面。 */
+.kq-archer {
+    --kq-archer-bg: #fffdf7;
+    --kq-archer-fg: #1f2933;
+    --kq-archer-muted: #61707d;
+    --kq-archer-card: #ffffff;
+    --kq-archer-border: #d5dbe1;
+    --kq-archer-accent: #2563eb;
+    --kq-archer-star: #d97706;
+    --kq-archer-correct: #15803d;
+    --kq-archer-wrong: #b91c1c;
+
+    box-sizing: border-box;
+    /* 版面依遊戲自己的大小決定（手機、平板、投影），不看視窗：下面的 @container 都以它為準 */
+    container-type: size;
+    container-name: kq-archer;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--kq-archer-bg);
+    color: var(--kq-archer-fg);
+    font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        'Noto Sans',
+        'Noto Sans TC',
+        sans-serif;
+    /* 越南文字母上方可能疊兩層符號，行高不可過緊（docs/SPEC.md 第 8 節） */
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.kq-archer *,
+.kq-archer *::before,
+.kq-archer *::after {
+    box-sizing: inherit;
+}
+
+/* container query 只套用在 container 的後代，所以內距與間距放在裡面這一層，手機的規則才改得到 */
+.kq-archer__layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 100%;
+    padding: clamp(0.75rem, 2.5cqmin, 1.75rem);
+}
+
+.kq-archer__head {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.kq-archer__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: clamp(1.1rem, 3cqmin, 1.75rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.kq-archer__stars {
+    color: var(--kq-archer-star);
+}
+
+.kq-archer__stars.is-up {
+    animation: kq-archer-bump 0.35s ease-out;
+}
+
+.kq-archer__stars.is-down {
+    animation: kq-archer-shake 0.35s ease-out;
+}
+
+.kq-archer__lap {
+    flex: 1;
+    color: var(--kq-archer-muted);
+    font-size: 0.8em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.kq-archer__timer {
+    min-width: 4.5em;
+    text-align: right;
+}
+
+.kq-archer__timer.is-low {
+    color: var(--kq-archer-wrong);
+}
+
+.kq-archer__prompt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0.4rem 1rem;
+    border: 3px solid var(--kq-archer-border);
+    border-radius: 1rem;
+    background: var(--kq-archer-card);
+    font-size: clamp(1.5rem, 5cqmin, 3rem);
+    font-weight: 700;
+    text-align: center;
+}
+
+.kq-archer__prompt .kq-archer__face {
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.kq-archer__prompt .kq-archer__image {
+    max-width: 30cqw;
+    max-height: clamp(4rem, 15cqh, 12rem);
+}
+
+.kq-archer__face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.kq-archer__image {
+    display: block;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    pointer-events: none;
+}
+
+.kq-archer__audio {
+    flex: none;
+    min-width: 44px;
+    min-height: 44px;
+    border: 2px solid var(--kq-archer-accent);
+    border-radius: 999px;
+    background: var(--kq-archer-card);
+    color: var(--kq-archer-accent);
+    font: inherit;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+/* 天空、草地與弓箭手。在遊戲區任何地方按住往後拉都能瞄準，所以整個遊戲區不捲動、不選取文字 */
+.kq-archer__field {
+    --kq-archer-balloon: clamp(3.5rem, 12cqmin, 7rem);
+
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    cursor: crosshair;
+    touch-action: none;
+}
+
+.kq-archer__sky {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(
+            ellipse 9% 5% at 18% 22%,
+            rgb(255 255 255 / 90%) 60%,
+            transparent 62%
+        ),
+        radial-gradient(
+            ellipse 12% 6% at 72% 14%,
+            rgb(255 255 255 / 85%) 60%,
+            transparent 62%
+        ),
+        linear-gradient(#a9dcfb, #e6f5ff);
+}
+
+.kq-archer__ground {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    height: 14%;
+    min-height: 2.25rem;
+    border-top: 3px solid #5d8c2f;
+    background: linear-gradient(#8bc34a, #6b9f3a);
+}
+
+/* 弓箭手站在左邊的柱子上，上下移動（index.ts 的 renderBow 設定 translateY） */
+.kq-archer__pole {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 0.6rem;
+    border-radius: 0.3rem;
+    background: linear-gradient(90deg, #a4723f, #7a5230);
+}
+
+.kq-archer__player {
+    position: absolute;
+    top: 0;
+    left: 1%;
+    z-index: 3;
+    height: 24%;
+    aspect-ratio: 1.3;
+    pointer-events: none;
+}
+
+.kq-archer__hero {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 72%;
+    height: 100%;
+}
+
+/* 弓的中心就是箭射出去的地方，在這一格高度的 45%（index.ts 的 BOW_AT）。
+   弓把對準弓箭手伸出去的手（那一格寬度的 60%），弓弦拉到臉旁邊 */
+.kq-archer__bow {
+    position: absolute;
+    top: 13%;
+    left: 22%;
+    height: 64%;
+    aspect-ratio: 1;
+    overflow: visible;
+}
+
+/* 瞄準線：從弓往右的水平虛線 */
+.kq-archer__guide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 4;
+    height: 0;
+    border-top: 3px dashed rgb(31 41 51 / 45%);
+    pointer-events: none;
+}
+
+.kq-archer__guide[hidden] {
+    display: none;
+}
+
+.kq-archer__arrow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.kq-archer__arrow svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.kq-archer__hint {
+    position: absolute;
+    top: 6%;
+    left: 55%;
+    z-index: 4;
+    padding: 0.25rem 0.9rem;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 88%);
+    color: var(--kq-archer-fg);
+    font-size: clamp(0.95rem, 2.6cqmin, 1.4rem);
+    font-weight: 700;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.kq-archer__hint[hidden] {
+    display: none;
+}
+
+/* 氣球：學生要讀的字寫在氣球上 */
+.kq-archer__balloon {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    pointer-events: none;
+    will-change: transform;
+}
+
+.kq-archer__balloon.is-probe {
+    visibility: hidden;
+}
+
+.kq-archer__body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: calc(var(--kq-archer-balloon) * 0.9);
+    min-height: var(--kq-archer-balloon);
+    padding: 0.35em 0.8em;
+    border: 2px solid var(--kq-archer-balloon-edge);
+    border-radius: 50%;
+    background:
+        radial-gradient(
+            circle at 30% 28%,
+            rgb(255 255 255 / 70%) 0 12%,
+            transparent 13%
+        ),
+        var(--kq-archer-balloon-fill);
+    font-size: clamp(1rem, 3.2cqmin, 2rem);
+    font-weight: 700;
+    line-height: 1.45;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* 氣球打結的地方。放在外面這一層，不算進氣球本體的大小（E2E 用本體檢查文字有沒有被截切） */
+.kq-archer__balloon::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    border-right: 0.35rem solid transparent;
+    border-bottom: 0.45rem solid var(--kq-archer-balloon-edge);
+    border-left: 0.35rem solid transparent;
+    transform: translate(-50%, -30%);
+}
+
+.kq-archer__balloon.is-correct::after,
+.kq-archer__balloon.is-wrong::after {
+    opacity: 0;
+}
+
+.kq-archer__body .kq-archer__image {
+    max-height: calc(var(--kq-archer-balloon) * 0.6);
+}
+
+.kq-archer__tail {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    width: 0.6rem;
+    height: calc(var(--kq-archer-balloon) * 0.6);
+    margin-top: 0.3rem;
+    transform: translateX(-50%);
+}
+
+.kq-archer__balloon--0 {
+    --kq-archer-balloon-fill: #fecaca;
+    --kq-archer-balloon-edge: #dc2626;
+}
+
+.kq-archer__balloon--1 {
+    --kq-archer-balloon-fill: #fde68a;
+    --kq-archer-balloon-edge: #d97706;
+}
+
+.kq-archer__balloon--2 {
+    --kq-archer-balloon-fill: #bbf7d0;
+    --kq-archer-balloon-edge: #16a34a;
+}
+
+.kq-archer__balloon--3 {
+    --kq-archer-balloon-fill: #bfdbfe;
+    --kq-archer-balloon-edge: #2563eb;
+}
+
+.kq-archer__balloon--4 {
+    --kq-archer-balloon-fill: #ddd6fe;
+    --kq-archer-balloon-edge: #7c3aed;
+}
+
+.kq-archer__balloon--5 {
+    --kq-archer-balloon-fill: #fbcfe8;
+    --kq-archer-balloon-edge: #db2777;
+}
+
+/* 射中：氣球破掉；射中正解是綠色，射中錯的是紅色。換題時其他氣球往上飄走 */
+.kq-archer__balloon.is-correct .kq-archer__body,
+.kq-archer__balloon.is-wrong .kq-archer__body {
+    animation: kq-archer-pop 0.4s ease-out forwards;
+}
+
+.kq-archer__balloon.is-correct .kq-archer__body {
+    --kq-archer-balloon-fill: #86efac;
+    --kq-archer-balloon-edge: var(--kq-archer-correct);
+}
+
+.kq-archer__balloon.is-wrong .kq-archer__body {
+    --kq-archer-balloon-fill: #fca5a5;
+    --kq-archer-balloon-edge: var(--kq-archer-wrong);
+}
+
+.kq-archer__balloon.is-correct .kq-archer__tail,
+.kq-archer__balloon.is-wrong .kq-archer__tail {
+    opacity: 0;
+}
+
+.kq-archer__balloon.is-leaving {
+    opacity: 0;
+    transition: opacity 0.35s ease-out;
+}
+
+.kq-archer__pop {
+    position: absolute;
+    z-index: 5;
+    font-size: clamp(1.25rem, 4cqmin, 2.5rem);
+    font-weight: 800;
+    pointer-events: none;
+    animation: kq-archer-float 0.9s ease-out forwards;
+}
+
+.kq-archer__pop.is-plus {
+    color: var(--kq-archer-star);
+}
+
+.kq-archer__pop.is-minus {
+    color: var(--kq-archer-wrong);
+}
+
+.kq-archer__toast {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    z-index: 6;
+    padding: 0.4rem 1.25rem;
+    border-radius: 999px;
+    background: rgb(31 41 51 / 85%);
+    color: #fff;
+    font-size: clamp(1.1rem, 3.5cqmin, 2rem);
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.kq-archer__toast.is-shown {
+    animation: kq-archer-toast 1.6s ease-out forwards;
+}
+
+.kq-archer__banner {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgb(255 253 247 / 88%);
+    font-weight: 800;
+}
+
+.kq-archer__banner[hidden] {
+    display: none;
+}
+
+.kq-archer__banner-title {
+    font-size: clamp(2rem, 9cqmin, 5rem);
+}
+
+.kq-archer__banner-stars {
+    color: var(--kq-archer-star);
+    font-size: clamp(1.75rem, 7cqmin, 4rem);
+}
+
+.kq-archer__live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* 固定橫式版面：遊戲區是直的時候蓋住整個遊戲，請學生轉成橫的 */
+.kq-archer__rotate {
+    position: absolute;
+    inset: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: var(--kq-archer-bg);
+    text-align: center;
+}
+
+.kq-archer__rotate[hidden] {
+    display: none;
+}
+
+.kq-archer__rotate-icon {
+    width: 3.5rem;
+    height: 6rem;
+    border: 0.4rem solid var(--kq-archer-fg);
+    border-radius: 0.75rem;
+    animation: kq-archer-turn 2s ease-in-out infinite;
+}
+
+.kq-archer__rotate-text {
+    font-size: clamp(1.25rem, 6cqw, 2rem);
+    font-weight: 700;
+}
+
+@keyframes kq-archer-turn {
+    0%,
+    20% {
+        transform: rotate(0);
+    }
+    60%,
+    100% {
+        transform: rotate(-90deg);
+    }
+}
+
+@keyframes kq-archer-bump {
+    50% {
+        transform: scale(1.3);
+    }
+}
+
+@keyframes kq-archer-shake {
+    20%,
+    60% {
+        transform: translateX(-6%);
+    }
+    40%,
+    80% {
+        transform: translateX(6%);
+    }
+}
+
+@keyframes kq-archer-pop {
+    to {
+        opacity: 0;
+        transform: scale(1.35);
+    }
+}
+
+@keyframes kq-archer-float {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -170%);
+    }
+}
+
+@keyframes kq-archer-toast {
+    0% {
+        opacity: 0;
+    }
+    15%,
+    75% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* 手機直向：題目縮小，天空佔滿下面 */
+@container kq-archer (width < 600px) {
+    .kq-archer__layout {
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .kq-archer__prompt {
+        padding: 0.3rem 0.75rem;
+        border-width: 2px;
+        font-size: clamp(1.25rem, 6.5cqw, 1.75rem);
+    }
+
+    .kq-archer__prompt .kq-archer__image {
+        max-height: 14cqh;
+    }
+
+    .kq-archer__player {
+        height: 26%;
+    }
+}
+
+/* 手機橫放：畫面很矮，題目放在左邊一欄，天空在右邊 */
+@container kq-archer (height < 480px) {
+    .kq-archer__layout {
+        flex-direction: row;
+        gap: 0.5rem;
+        padding: 0.4rem 0.6rem;
+    }
+
+    .kq-archer__head {
+        justify-content: center;
+        width: 30%;
+    }
+
+    .kq-archer__status {
+        font-size: clamp(1rem, 6cqh, 1.4rem);
+    }
+
+    .kq-archer__lap {
+        display: none;
+    }
+
+    .kq-archer__prompt {
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.4rem;
+        border-width: 2px;
+        font-size: clamp(1.1rem, 7cqh, 1.75rem);
+    }
+
+    .kq-archer__prompt .kq-archer__face {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .kq-archer__prompt .kq-archer__image {
+        max-width: 100%;
+        max-height: 34cqh;
+    }
+
+    .kq-archer__field {
+        --kq-archer-balloon: clamp(3rem, 15cqh, 4.5rem);
+    }
+
+    .kq-archer__body {
+        padding: 0.2em 0.6em;
+        font-size: clamp(0.9rem, 5.5cqh, 1.25rem);
+    }
+
+    .kq-archer__player {
+        height: 34%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .kq-archer__stars.is-up,
+    .kq-archer__stars.is-down,
+    .kq-archer__pop,
+    .kq-archer__balloon.is-correct .kq-archer__body,
+    .kq-archer__balloon.is-wrong .kq-archer__body {
+        animation: none;
+    }
+
+    .kq-archer__balloon.is-leaving {
+        transition: none;
+    }
+
+    .kq-archer__rotate-icon {
+        animation: none;
+        transform: rotate(-90deg);
+    }
+
+    .kq-archer__toast.is-shown {
+        animation: none;
+        opacity: 1;
+    }
+}

@@ -2,13 +2,14 @@
 
 [Kancil Quiz](https://github.com/foolfitz/kancil-quiz) 內建的計分遊戲：
 
-| 目錄            | 套件                             | 遊戲   |
-| --------------- | -------------------------------- | ------ |
-| `quiz/`         | `@kancil-quiz/game-quiz`         | 選擇題 |
-| `match-up/`     | `@kancil-quiz/game-match-up`     | 配對   |
-| `whack-a-mole/` | `@kancil-quiz/game-whack-a-mole` | 打地鼠 |
+| 目錄              | 套件                               | 遊戲   |
+| ----------------- | ---------------------------------- | ------ |
+| `quiz/`           | `@kancil-quiz/game-quiz`           | 選擇題 |
+| `match-up/`       | `@kancil-quiz/game-match-up`       | 配對   |
+| `whack-a-mole/`   | `@kancil-quiz/game-whack-a-mole`   | 打地鼠 |
+| `balloon-archer/` | `@kancil-quiz/game-balloon-archer` | 射氣球 |
 
-`arcade/`（`@kancil-quiz/arcade`）不是遊戲，是打地鼠這類遊戲共用的規則：星星、輪次、一批一批出現的目標、倒數。
+`arcade/`（`@kancil-quiz/arcade`）不是遊戲，是打地鼠、射氣球共用的規則：星星、輪次、一批一批出現的目標、倒數。
 
 不計分的互動教材（字卡、圖卡牆、轉盤）在 [kancil-materials](https://github.com/foolfitz/kancil-materials)；可以單獨執行的迷宮問答在 [maze-quiz](https://github.com/foolfitz/maze-quiz)。
 
