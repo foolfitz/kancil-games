@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "lib": ["ESNext", "DOM", "DOM.Iterable"],
+        "types": ["vite-plus/client"],
+        "strict": true,
+        "noEmit": true,
+        "isolatedModules": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "skipLibCheck": true,
+        // 單獨執行時用 vendor/ 中的副本，與 vite.config.ts 的 resolve.alias 一致
+        "paths": {
+            "@kancil-quiz/games-sdk": ["./vendor/games-sdk.ts"],
+            "@kancil-quiz/text": ["./vendor/text.ts"]
+        }
+    },
+    "include": ["src", "tests", "vendor", "demo", "vite.config.ts"]
+}

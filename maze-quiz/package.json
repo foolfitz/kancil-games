@@ -1,0 +1,43 @@
+{
+    "name": "@kancil-quiz/game-maze-quiz",
+    "version": "0.0.0",
+    "private": true,
+    "description": "迷宮問答：Kancil Quiz 的遊戲模組，也可以單獨執行示範頁",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/foolfitz/maze-quiz.git"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./meta": "./src/meta.ts"
+    },
+    "scripts": {
+        "dev": "vp dev",
+        "build": "vp build",
+        "preview": "vp preview",
+        "test": "vp test run",
+        "check": "vp check",
+        "check:fix": "vp check --fix"
+    },
+    "devDependencies": {
+        "@types/node": "^22.20.5",
+        "vite-plus": "0.3.0"
+    },
+    "peerDependencies": {
+        "@kancil-quiz/games-sdk": "*",
+        "@kancil-quiz/text": "*"
+    },
+    "peerDependenciesMeta": {
+        "@kancil-quiz/games-sdk": {
+            "optional": true
+        },
+        "@kancil-quiz/text": {
+            "optional": true
+        }
+    },
+    "engines": {
+        "node": ">=22"
+    }
+}
