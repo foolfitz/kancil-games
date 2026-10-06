@@ -66,7 +66,9 @@ function mount(host: HTMLElement, ctx: GameContext<QuizOptions>): GameInstance {
     const nextButton = el('button', 'kq-quiz__next', '下一題 →');
     nextButton.type = 'button';
     nextButton.hidden = true;
-    root.append(progress, prompt, choices, feedback, nextButton);
+    const layout = el('div', 'kq-quiz__layout');
+    layout.append(progress, prompt, choices, feedback, nextButton);
+    root.append(layout);
     host.append(root);
 
     function playPrompt(): void {
