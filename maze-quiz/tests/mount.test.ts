@@ -314,7 +314,7 @@ describe('mount() 與 destroy()（假的 DOM）', () => {
         expectClean(env, host);
     });
 
-    it('示範頁的掛勾：開局前拿到這一局，除錯快捷鍵可以直接過關', () => {
+    it('測試用的掛勾：開局前拿到這一局，debug 函式可以直接過關', () => {
         const env = createFakeEnvironment();
         const host = env.createHost();
         const { ctx, events } = harness();

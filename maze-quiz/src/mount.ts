@@ -63,9 +63,9 @@ interface LevelView {
     readonly labels: readonly ZoneLabel[];
 }
 
-/** 不屬於遊戲模組介面（GameModule）的掛勾，只給這個 repo 的示範頁用；平台不會傳 */
+/** 不屬於遊戲模組介面（GameModule）的掛勾，只給測試用；宿主只傳前兩個參數，不會傳這個 */
 export interface MountHooks {
-    /** 開局前把這一局交出去：除錯畫面（?debug=1）讀狀態，並呼叫 core/game.ts 的 debug 函式 */
+    /** 開局前把這一局交出去：測試讀狀態，並呼叫 core/game.ts 的 debug 函式直接過關或扣命 */
     readonly onSession?: (session: Session) => void;
 }
 

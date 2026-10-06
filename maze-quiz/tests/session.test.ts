@@ -1,4 +1,6 @@
+import { buildRounds, check, createRng, judge } from '@kancil-quiz/deck';
 import type { GameEvent, Round } from '@kancil-quiz/games-sdk';
+import type { KancilSet } from '@kancil-quiz/schema';
 import { describe, expect, it } from 'vite-plus/test';
 import {
     DEFAULT_GAME_CONFIG,
@@ -10,6 +12,11 @@ import { opposite } from '../src/core/grid';
 import { meta, type MazeQuizOptions } from '../src/meta';
 import { roundsToLevels } from '../src/rounds';
 import { createSession, type Session } from '../src/session';
+
+const fixtures = import.meta.glob<KancilSet>(
+    '/packages/schema/fixtures/sets/*/set.json',
+    { eager: true, import: 'default' },
+);
 
 const STEP_MS = 1000 / 60;
 const { timing } = DEFAULT_GAME_CONFIG;
@@ -231,4 +238,83 @@ describe('照劇本玩一局：發出的事件', () => {
         };
         expect(once()).toEqual(once());
     });
+});
+
+// 7.6：遊戲回報的 correct 必須與 @kancil-quiz/deck 的 judge() 一致
+describe('與 @kancil-quiz/deck 的判定一致（docs/SPEC.md 7.6）', () => {
+    const compatible = Object.entries(fixtures).filter(
+        ([, set]) => check(set, meta.requires).ok,
+    );
+
+    /** 前進到可以操作（playing）或遊戲結束 */
+    function untilPlaying(session: Session): void {
+        for (let i = 0; i < 1000; i++) {
+            if (session.completed || session.state.phase.kind === 'playing')
+                return;
+            session.step(STEP_MS);
+        }
+        throw new Error(`停在 ${session.state.phase.kind}`);
+    }
+
+    it('至少有詞彙組與問答組的 fixture 可以玩迷宮', () => {
+        const kinds = new Set(compatible.map(([, set]) => set.kind));
+        expect(kinds).toEqual(new Set(['vocab', 'quiz']));
+    });
+
+    it.each(compatible)(
+        '%s：每次走進答案區的判定都與 judge() 相同',
+        (_path, set) => {
+            const gameRounds = buildRounds(set, meta.requires, {
+                rng: createRng(3),
+            });
+            const levels = roundsToLevels(gameRounds);
+            expect(levels).toHaveLength(gameRounds.length);
+
+            const { session, events } = play({}, NO_ENEMIES, gameRounds);
+            session.start();
+            // 每一題先走進所有答錯的園區，最後走進正確的
+            for (const level of levels) {
+                const wrong = level.options.filter((option) => !option.correct);
+                const right = level.options.filter((option) => option.correct);
+                for (const option of [...wrong, ...right.slice(0, 1)]) {
+                    untilPlaying(session);
+                    walkInto(session, option.id);
+                }
+            }
+            untilPlaying(session);
+            expect(session.completed).toBe(true);
+
+            const byEntry = new Map<string, Round>(
+                gameRounds.map((round) => [round.entryId, round]),
+            );
+            const answered = events.filter(
+                (event) => event.type === 'answered',
+            );
+            expect(answered).toHaveLength(
+                levels.reduce(
+                    (sum, level) =>
+                        sum +
+                        level.options.filter((option) => !option.correct)
+                            .length +
+                        1,
+                    0,
+                ),
+            );
+            expect(answered.filter((event) => event.correct)).toHaveLength(
+                levels.length,
+            );
+            for (const event of answered) {
+                const round = byEntry.get(event.entryId);
+                if (round?.shape !== 'mcq')
+                    throw new Error(`沒有這一題：${event.entryId}`);
+                expect(
+                    judge(set, 'mcq', {
+                        entryId: event.entryId,
+                        presented: round.options.map((option) => option.id),
+                        selected: event.selected,
+                    }),
+                ).toBe(event.correct);
+            }
+        },
+    );
 });

@@ -1,7 +1,7 @@
 import type { HostWindow } from '../src/scope';
 
 /**
- * 給 mount()／destroy() 測試用的極簡假 DOM（repo 沒有裝 jsdom）。
+ * 給 mount()／destroy() 測試用的極簡假 DOM（平台沒有裝 jsdom）。
  * 只做遊戲用得到的部分，重點是記錄每個物件上還掛著幾個監聽、還有幾個計時器與
  * requestAnimationFrame、ResizeObserver 有沒有斷開，用來確認 destroy() 之後什麼都沒留下。
  * 畫面不會真的畫出來：canvas 的 2D context 是什麼都不做的替身。
