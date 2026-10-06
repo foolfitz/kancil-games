@@ -11,8 +11,9 @@ import {
     pairRounds,
 } from '../src/session';
 
+// 共用的 fixture 在平台的 packages/schema；以 / 開頭是從平台的根目錄算起，這個 repo 掛在哪一層都找得到
 const fixtures = import.meta.glob<KancilSet>(
-    '../../../schema/fixtures/sets/*/set.json',
+    '/packages/schema/fixtures/sets/*/set.json',
     { eager: true, import: 'default' },
 );
 
