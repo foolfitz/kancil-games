@@ -16,12 +16,8 @@
     /* 版面依遊戲自己的大小決定（手機、平板、投影），不看視窗：下面的 @container 都以它為準 */
     container-type: size;
     container-name: kq-match;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
     width: 100%;
     height: 100%;
-    padding: clamp(0.75rem, 2.5vw, 1.75rem);
     overflow-y: auto;
     background: var(--kq-match-bg);
     color: var(--kq-match-fg);
@@ -43,6 +39,15 @@
 .kq-match *::before,
 .kq-match *::after {
     box-sizing: inherit;
+}
+
+/* container query 只套用在 container 的後代，所以內距與間距放在裡面這一層，手機的規則才改得到 */
+.kq-match__layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 100%;
+    padding: clamp(0.75rem, 2.5vw, 1.75rem);
 }
 
 .kq-match__status {
@@ -340,7 +345,7 @@
 /* 手機（窄或矮的畫面）：題目列與卡片都縮小，一頁的題目與卡片才能同時在畫面內，拖曳時不必捲動。
    還是放不下時，index.ts 會減少每頁的組數。寫在平板的規則後面，兩者都符合時以這裡為準 */
 @container kq-match ((width < 600px) or (height < 480px)) {
-    .kq-match {
+    .kq-match__layout {
         gap: 0.4rem;
         padding: 0.5rem 0.75rem 0.75rem;
     }
@@ -408,6 +413,74 @@
 
     .kq-match__card.is-placed {
         padding-right: 1.75rem;
+    }
+}
+
+/* 手機橫放（矮而寬）：題目排成一排、空格在各自的下面，卡片排在最下面，用橫向的寬度而不是高度。
+   每一格有最小寬度，一排放不下（出現水平捲動）時，index.ts 一樣會減少每頁的組數 */
+@container kq-match (orientation: landscape) and (height < 480px) {
+    .kq-match__board {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .kq-match__rows {
+        grid-auto-columns: minmax(5.5rem, 1fr);
+        grid-auto-flow: column;
+    }
+
+    .kq-match__row {
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr);
+        min-height: 0;
+    }
+
+    .kq-match__prompt {
+        flex-direction: column;
+        justify-content: center;
+        gap: 0.15rem;
+        padding: 0.25rem 0.4rem;
+        text-align: center;
+    }
+
+    .kq-match__prompt .kq-match__image {
+        max-width: 100%;
+    }
+
+    .kq-match__words {
+        align-items: center;
+    }
+
+    .kq-match__audio {
+        margin-left: 0;
+    }
+
+    .kq-match__pool {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* 格子很窄：配好的卡片字小一點、✓ 改成壓在右上角的小圓章，不占字的寬度；兩行也不會比空格高，
+       配好之後整排不會變高 */
+    .kq-match__card.is-placed {
+        padding: 0.15rem 0.4rem;
+        font-size: 0.95rem;
+        line-height: 1.25;
+    }
+
+    .kq-match__mark {
+        top: -0.4rem;
+        right: -0.3rem;
+        display: grid;
+        place-items: center;
+        width: 1.25rem;
+        height: 1.25rem;
+        border-radius: 999px;
+        background: var(--kq-match-correct);
+        color: #fff;
+        font-size: 0.75rem;
+        line-height: 1;
+        transform: none;
     }
 }
 

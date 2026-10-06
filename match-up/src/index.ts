@@ -110,7 +110,9 @@ function mount(
     const pool = el('div', 'kq-match__pool');
     pool.setAttribute('aria-label', '答案卡片');
     board.append(rows, pool);
-    root.append(status, board);
+    const layout = el('div', 'kq-match__layout');
+    layout.append(status, board);
+    root.append(layout);
     host.append(root);
 
     function say(text: string, tone: 'correct' | 'wrong' | 'info'): void {
@@ -447,15 +449,17 @@ function mount(
     function startPage(): void {
         renderPage();
         fit();
-        say('把卡片拖到對應的題目旁邊', 'info');
+        say('把卡片拖到對應的題目', 'info');
         lastAnswerAt = performance.now();
     }
 
     // 這一頁的題目與卡片是不是都在畫面內（沒有掛在版面上時量不到，就當作放得下）
+    // 手機橫放時題目排成一排（style.css），放不下的是寬度，所以兩個方向都要量
     function fitsScreen(): boolean {
         return (
             root.clientHeight === 0 ||
-            root.scrollHeight <= root.clientHeight + 1
+            (root.scrollHeight <= root.clientHeight + 1 &&
+                root.scrollWidth <= root.clientWidth + 1)
         );
     }
 
