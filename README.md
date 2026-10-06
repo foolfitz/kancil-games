@@ -8,6 +8,8 @@
 | `match-up/`     | `@kancil-quiz/game-match-up`     | 配對   |
 | `whack-a-mole/` | `@kancil-quiz/game-whack-a-mole` | 打地鼠 |
 
+`arcade/`（`@kancil-quiz/arcade`）不是遊戲，是打地鼠這類遊戲共用的規則：星星、輪次、一批一批出現的目標、倒數。
+
 不計分的互動教材（字卡、圖卡牆、轉盤）在 [kancil-materials](https://github.com/foolfitz/kancil-materials)；可以單獨執行的迷宮問答在 [maze-quiz](https://github.com/foolfitz/maze-quiz)。
 
 ## 只能在 Kancil Quiz 裡面使用

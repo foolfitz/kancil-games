@@ -1,0 +1,19 @@
+{
+    "name": "@kancil-quiz/arcade",
+    "version": "0.0.0",
+    "private": true,
+    "description": "打地鼠、射氣球共用的規則：星星、輪次、一批一批的目標、倒數（docs/SPEC.md 7.5）",
+    "license": "AGPL-3.0-or-later",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/foolfitz/kancil-games.git",
+        "directory": "arcade"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "dependencies": {
+        "@kancil-quiz/games-sdk": "*"
+    }
+}

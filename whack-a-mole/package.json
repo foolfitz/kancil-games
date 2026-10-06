@@ -15,6 +15,7 @@
         "./meta": "./src/meta.ts"
     },
     "dependencies": {
+        "@kancil-quiz/arcade": "*",
         "@kancil-quiz/games-sdk": "*"
     }
 }

@@ -8,12 +8,12 @@ import { meta, normalizeOptions } from './meta';
 import type { WhackAMoleOptions } from './meta';
 import {
     Countdown,
-    WhackSession,
+    StarSession,
     mcqRounds,
     pickWave,
-    upMs,
     waveHasAnswer,
-} from './session';
+} from '@kancil-quiz/arcade';
+import { upMs } from './session';
 import './style.css';
 
 export type { WhackAMoleOptions } from './meta';
@@ -106,7 +106,7 @@ function mount(
     ctx: GameContext<WhackAMoleOptions>,
 ): GameInstance {
     const options = normalizeOptions(ctx.options);
-    const session = new WhackSession(mcqRounds(ctx.rounds), ctx.rng);
+    const session = new StarSession(mcqRounds(ctx.rounds), ctx.rng);
     const countdown = new Countdown(options.seconds * 1000);
     const timers = new Set<ReturnType<typeof setTimeout>>();
     let tickTimer: ReturnType<typeof setInterval> | undefined;
@@ -317,10 +317,10 @@ function mount(
         previousHadAnswer = withAnswer;
         const moles = pickWave(round, HOLES, {
             withAnswer,
-            avoidHoles: lastHoles,
+            avoidSlots: lastHoles,
             rng: ctx.rng,
         });
-        lastHoles = moles.map((mole) => mole.hole);
+        lastHoles = moles.map((mole) => mole.slot);
         const id = ++wave;
         pending = moles.length;
         const stay = upMs(options.speed, session.lap);
@@ -332,17 +332,17 @@ function mount(
                 continue;
             }
             later(() => {
-                const hole = holes[mole.hole];
+                const hole = holes[mole.slot];
                 hole.optionId = option.id;
                 hole.button.dataset.optionId = option.id;
                 hole.button.setAttribute('aria-label', faceLabel(option.face));
                 hole.sign.replaceChildren(
                     renderFace(option.face, 'kq-whack__face'),
                 );
-                setHole(mole.hole, 'up');
+                setHole(mole.slot, 'up');
                 later(() => {
                     if (id === wave && hole.state === 'up') {
-                        retreat(mole.hole, id);
+                        retreat(mole.slot, id);
                     }
                 }, stay);
             }, i * STAGGER_MS);
