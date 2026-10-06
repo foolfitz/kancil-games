@@ -1,0 +1,20 @@
+{
+    "name": "@kancil-quiz/game-whack-a-mole",
+    "version": "0.0.0",
+    "private": true,
+    "description": "打地鼠（docs/SPEC.md 7.5）",
+    "license": "AGPL-3.0-or-later",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/foolfitz/kancil-games.git",
+        "directory": "whack-a-mole"
+    },
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./meta": "./src/meta.ts"
+    },
+    "dependencies": {
+        "@kancil-quiz/games-sdk": "*"
+    }
+}

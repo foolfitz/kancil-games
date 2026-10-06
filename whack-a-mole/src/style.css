@@ -1,0 +1,571 @@
+/* 所有樣式都限定在 .kq-whack 之下，不影響宿主頁面。 */
+.kq-whack {
+    --kq-whack-bg: #fffdf7;
+    --kq-whack-fg: #1f2933;
+    --kq-whack-muted: #61707d;
+    --kq-whack-card: #ffffff;
+    --kq-whack-border: #d5dbe1;
+    --kq-whack-accent: #2563eb;
+    --kq-whack-grass: #b9dd9b;
+    --kq-whack-grass-dark: #9ccb7a;
+    --kq-whack-pit: #3a2a1f;
+    --kq-whack-rim: #8a6440;
+    --kq-whack-fur: #9a6a3f;
+    --kq-whack-skin: #e9c9a3;
+    --kq-whack-sign: #fffaf0;
+    --kq-whack-sign-border: #b4885c;
+    --kq-whack-star: #d97706;
+    --kq-whack-correct: #15803d;
+    --kq-whack-correct-bg: #dcfce7;
+    --kq-whack-wrong: #b91c1c;
+    --kq-whack-wrong-bg: #fee2e2;
+
+    box-sizing: border-box;
+    /* 版面依遊戲自己的大小決定（手機、平板、投影），不看視窗：下面的 @container 都以它為準 */
+    container-type: size;
+    container-name: kq-whack;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--kq-whack-bg);
+    color: var(--kq-whack-fg);
+    font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        'Noto Sans',
+        'Noto Sans TC',
+        sans-serif;
+    /* 越南文字母上方可能疊兩層符號，行高不可過緊（docs/SPEC.md 第 8 節） */
+    line-height: 1.6;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.kq-whack *,
+.kq-whack *::before,
+.kq-whack *::after {
+    box-sizing: inherit;
+}
+
+/* container query 只套用在 container 的後代，所以內距與間距放在裡面這一層，手機的規則才改得到 */
+.kq-whack__layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: 100%;
+    padding: clamp(0.75rem, 2.5cqmin, 1.75rem);
+}
+
+.kq-whack__head {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.kq-whack__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: clamp(1.1rem, 3cqmin, 1.75rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.kq-whack__stars {
+    color: var(--kq-whack-star);
+}
+
+.kq-whack__stars.is-up {
+    animation: kq-whack-bump 0.35s ease-out;
+}
+
+.kq-whack__stars.is-down {
+    animation: kq-whack-shake 0.35s ease-out;
+}
+
+.kq-whack__lap {
+    flex: 1;
+    color: var(--kq-whack-muted);
+    font-size: 0.8em;
+    font-weight: 600;
+    text-align: center;
+}
+
+.kq-whack__timer {
+    min-width: 4.5em;
+    text-align: right;
+}
+
+.kq-whack__timer.is-low {
+    color: var(--kq-whack-wrong);
+}
+
+.kq-whack__prompt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    min-height: 3rem;
+    padding: 0.4rem 1rem;
+    border: 3px solid var(--kq-whack-border);
+    border-radius: 1rem;
+    background: var(--kq-whack-card);
+    font-size: clamp(1.5rem, 5cqmin, 3rem);
+    font-weight: 700;
+    text-align: center;
+}
+
+.kq-whack__prompt .kq-whack__face {
+    flex-direction: row;
+    gap: 1rem;
+}
+
+.kq-whack__prompt .kq-whack__image {
+    max-width: 30cqw;
+    max-height: clamp(4rem, 17cqh, 13rem);
+}
+
+.kq-whack__face {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.kq-whack__image {
+    display: block;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    pointer-events: none;
+}
+
+.kq-whack__audio {
+    flex: none;
+    min-width: 44px;
+    min-height: 44px;
+    border: 2px solid var(--kq-whack-accent);
+    border-radius: 999px;
+    background: var(--kq-whack-card);
+    color: var(--kq-whack-accent);
+    font: inherit;
+    font-size: 1.25rem;
+    cursor: pointer;
+}
+
+/* 草地與九個洞 */
+.kq-whack__field {
+    position: relative;
+    display: grid;
+    flex: 1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+    gap: 0.25rem 0.5rem;
+    min-height: 0;
+    padding: 0.25rem 0.5rem;
+    border-radius: 1.25rem;
+    background:
+        radial-gradient(
+            circle at 20% 30%,
+            var(--kq-whack-grass-dark) 0 2px,
+            transparent 3px
+        ),
+        var(--kq-whack-grass);
+    background-size:
+        2.5rem 2.5rem,
+        auto;
+}
+
+.kq-whack__hole {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 1rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+
+.kq-whack__hole:focus-visible {
+    outline: 3px solid var(--kq-whack-accent);
+    outline-offset: -3px;
+}
+
+/* 洞口：地鼠從洞口的中線冒出來。寬度跟著高度走，寬螢幕的格子很寬時洞口才不會變得很扁 */
+.kq-whack__hole::before {
+    content: '';
+    position: absolute;
+    bottom: 6%;
+    left: 50%;
+    height: 22%;
+    max-width: 84%;
+    aspect-ratio: 3.2;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: var(--kq-whack-pit);
+    box-shadow: 0 0.3rem 0 var(--kq-whack-rim);
+}
+
+.kq-whack__pit {
+    position: absolute;
+    inset: 0 0 17% 0;
+    overflow: hidden;
+}
+
+.kq-whack__mole {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    transform: translateY(105%);
+    transition: transform 0.16s ease-in;
+}
+
+.kq-whack__hole.is-up .kq-whack__mole {
+    transform: translateY(0);
+    transition-timing-function: cubic-bezier(0.2, 1.4, 0.5, 1);
+}
+
+/* 地鼠舉著的牌子：學生要讀的字 */
+.kq-whack__tag {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex: none;
+    max-width: 100%;
+    margin-bottom: -0.4rem;
+}
+
+.kq-whack__sign {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    padding: 0.1rem 0.6rem;
+    border: 3px solid var(--kq-whack-sign-border);
+    border-radius: 0.6rem;
+    background: var(--kq-whack-sign);
+    font-size: clamp(0.95rem, 3.6cqmin, 2.25rem);
+    font-weight: 700;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.kq-whack__sign .kq-whack__image {
+    max-height: clamp(2rem, 7cqmin, 5rem);
+}
+
+.kq-whack__critter {
+    flex: 0 1 auto;
+    width: auto;
+    max-width: 80%;
+    height: 58%;
+    min-height: 0;
+}
+
+.kq-whack__fur {
+    fill: var(--kq-whack-fur);
+}
+
+.kq-whack__skin {
+    fill: var(--kq-whack-skin);
+}
+
+/* 打對：牌子變綠、地鼠被敲扁；打錯：牌子變紅、地鼠搖頭 */
+/* 壓在牌子右上角的小圓章 */
+.kq-whack__mark {
+    position: absolute;
+    top: -0.4em;
+    right: -0.5em;
+    z-index: 2;
+    display: none;
+    place-items: center;
+    width: 1.6em;
+    height: 1.6em;
+    border-radius: 50%;
+    color: #fff;
+    font-size: clamp(0.75rem, 2.2cqmin, 1.25rem);
+    font-weight: 700;
+    line-height: 1;
+}
+
+.kq-whack__hole.is-hit .kq-whack__mark,
+.kq-whack__hole.is-miss .kq-whack__mark {
+    display: grid;
+}
+
+.kq-whack__hole.is-hit .kq-whack__mark {
+    background: var(--kq-whack-correct);
+}
+
+.kq-whack__hole.is-miss .kq-whack__mark {
+    background: var(--kq-whack-wrong);
+}
+
+.kq-whack__hole.is-hit .kq-whack__sign {
+    border-color: var(--kq-whack-correct);
+    background: var(--kq-whack-correct-bg);
+}
+
+.kq-whack__hole.is-miss .kq-whack__sign {
+    border-color: var(--kq-whack-wrong);
+    background: var(--kq-whack-wrong-bg);
+}
+
+.kq-whack__hole.is-hit .kq-whack__critter {
+    transform: scaleY(0.82);
+    transform-origin: bottom;
+    transition: transform 0.1s;
+}
+
+.kq-whack__hole.is-miss .kq-whack__mole {
+    animation: kq-whack-shake 0.4s ease-out;
+}
+
+/* 電腦鍵盤的 1～9 對應九個洞；只在有滑鼠的裝置顯示 */
+.kq-whack__key {
+    position: absolute;
+    bottom: 0;
+    left: 0.25rem;
+    display: none;
+    color: rgb(31 41 51 / 45%);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .kq-whack__key {
+        display: block;
+    }
+}
+
+/* +1、−1 從地鼠的右邊往上飄，不蓋住牌子上的字 */
+.kq-whack__pop {
+    position: absolute;
+    top: 40%;
+    left: 74%;
+    z-index: 3;
+    font-size: clamp(1.25rem, 4cqmin, 2.5rem);
+    font-weight: 800;
+    pointer-events: none;
+    animation: kq-whack-float 0.9s ease-out forwards;
+}
+
+.kq-whack__pop.is-plus {
+    color: var(--kq-whack-star);
+}
+
+.kq-whack__pop.is-minus {
+    color: var(--kq-whack-wrong);
+}
+
+.kq-whack__toast {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    z-index: 4;
+    padding: 0.4rem 1.25rem;
+    border-radius: 999px;
+    background: rgb(31 41 51 / 85%);
+    color: #fff;
+    font-size: clamp(1.1rem, 3.5cqmin, 2rem);
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.kq-whack__toast.is-shown {
+    animation: kq-whack-toast 1.6s ease-out forwards;
+}
+
+.kq-whack__banner {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgb(255 253 247 / 88%);
+    font-weight: 800;
+}
+
+.kq-whack__banner[hidden] {
+    display: none;
+}
+
+.kq-whack__banner-title {
+    font-size: clamp(2rem, 9cqmin, 5rem);
+}
+
+.kq-whack__banner-stars {
+    color: var(--kq-whack-star);
+    font-size: clamp(1.75rem, 7cqmin, 4rem);
+}
+
+.kq-whack__live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+@keyframes kq-whack-bump {
+    50% {
+        transform: scale(1.3);
+    }
+}
+
+@keyframes kq-whack-shake {
+    20%,
+    60% {
+        transform: translateX(-6%);
+    }
+    40%,
+    80% {
+        transform: translateX(6%);
+    }
+}
+
+@keyframes kq-whack-float {
+    from {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -120%);
+    }
+}
+
+@keyframes kq-whack-toast {
+    0% {
+        opacity: 0;
+    }
+    15%,
+    75% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+/* 手機直向：題目縮小，草地佔滿下面 */
+@container kq-whack (width < 600px) {
+    .kq-whack__layout {
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .kq-whack__prompt {
+        padding: 0.3rem 0.75rem;
+        border-width: 2px;
+        font-size: clamp(1.25rem, 6.5cqw, 1.75rem);
+    }
+
+    .kq-whack__prompt .kq-whack__image {
+        max-height: 15cqh;
+    }
+
+    .kq-whack__field {
+        gap: 0.25rem;
+        padding: 0.25rem;
+    }
+
+    .kq-whack__sign {
+        padding: 0.05rem 0.35rem;
+        border-width: 2px;
+    }
+}
+
+/* 手機橫放：畫面很矮，題目放在左邊一欄，草地在右邊 */
+@container kq-whack (height < 480px) {
+    .kq-whack__layout {
+        flex-direction: row;
+        gap: 0.5rem;
+        padding: 0.4rem 0.6rem;
+    }
+
+    .kq-whack__head {
+        justify-content: center;
+        width: 30%;
+    }
+
+    .kq-whack__status {
+        font-size: clamp(1rem, 6cqh, 1.4rem);
+    }
+
+    .kq-whack__lap {
+        display: none;
+    }
+
+    .kq-whack__prompt {
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 0.4rem;
+        border-width: 2px;
+        font-size: clamp(1.1rem, 7cqh, 1.75rem);
+    }
+
+    .kq-whack__prompt .kq-whack__face {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .kq-whack__prompt .kq-whack__image {
+        max-width: 100%;
+        max-height: 34cqh;
+    }
+
+    .kq-whack__field {
+        gap: 0.2rem 0.4rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .kq-whack__sign {
+        padding: 0 0.35rem;
+        border-width: 2px;
+        font-size: clamp(0.9rem, 5.5cqh, 1.25rem);
+        line-height: 1.4;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .kq-whack__mole,
+    .kq-whack__hole.is-up .kq-whack__mole,
+    .kq-whack__hole.is-hit .kq-whack__critter {
+        transition: none;
+    }
+
+    .kq-whack__stars.is-up,
+    .kq-whack__stars.is-down,
+    .kq-whack__hole.is-miss .kq-whack__mole,
+    .kq-whack__pop {
+        animation: none;
+    }
+
+    .kq-whack__toast.is-shown {
+        animation: none;
+        opacity: 1;
+    }
+}
