@@ -28,6 +28,8 @@ export const meta = {
     id: 'whack-a-mole',
     version: '0.1.0',
     title: { 'zh-TW': '打地鼠' },
+    // 星星（起始 3 顆，打對 +1、打錯 −1）是遊戲得分，顯示在學生的結果頁與老師的成績頁
+    scoreLabel: { 'zh-TW': '星星' },
     requires: {
         shape: 'mcq',
         minRounds: 1,
