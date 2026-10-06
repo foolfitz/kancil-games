@@ -417,14 +417,15 @@
 }
 
 /* 手機橫放（矮而寬）：題目排成一排、空格在各自的下面，卡片排在最下面，用橫向的寬度而不是高度。
-   每一格有最小寬度，一排放不下（出現水平捲動）時，index.ts 一樣會減少每頁的組數 */
+   題目的圖片在左、文字在右，圖片依畫面的高度放大；每一格至少 9rem 寬，三、四個字才放得下一行，
+   一排放不下（出現水平捲動）時，index.ts 一樣會減少每頁的組數 */
 @container kq-match (orientation: landscape) and (height < 480px) {
     .kq-match__board {
         grid-template-columns: minmax(0, 1fr);
     }
 
     .kq-match__rows {
-        grid-auto-columns: minmax(5.5rem, 1fr);
+        grid-auto-columns: minmax(9rem, 1fr);
         grid-auto-flow: column;
     }
 
@@ -435,19 +436,14 @@
     }
 
     .kq-match__prompt {
-        flex-direction: column;
         justify-content: center;
-        gap: 0.15rem;
-        padding: 0.25rem 0.4rem;
-        text-align: center;
+        gap: 0.35rem;
+        padding: 0.25rem 0.5rem;
     }
 
     .kq-match__prompt .kq-match__image {
-        max-width: 100%;
-    }
-
-    .kq-match__words {
-        align-items: center;
+        height: clamp(3rem, 18cqh, 4.5rem);
+        max-width: 50%;
     }
 
     .kq-match__audio {
@@ -460,7 +456,7 @@
         justify-content: center;
     }
 
-    /* 格子很窄：配好的卡片字小一點、✓ 改成壓在右上角的小圓章，不占字的寬度；兩行也不會比空格高，
+    /* 格子不寬：配好的卡片字小一點、✓ 改成壓在右上角的小圓章，不占字的寬度；兩行也不會比空格高，
        配好之後整排不會變高 */
     .kq-match__card.is-placed {
         padding: 0.15rem 0.4rem;
