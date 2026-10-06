@@ -1,12 +1,18 @@
 import type { Round } from '@kancil-quiz/games-sdk';
 
-type PairRound = Extract<Round, { shape: 'pair' }>;
+export type PairRound = Extract<Round, { shape: 'pair' }>;
 
 export interface MatchPage {
     // 左側：題目依宿主給的順序排列
     slots: PairRound[];
     // 右側：同一頁的答案卡片，另外打亂
     cards: PairRound[];
+}
+
+// 某一刻的分頁：refit() 試過幾種組數後要回到原本的分頁時用（見 sameLayout()、restore()）
+export interface MatchLayout {
+    pages: readonly MatchPage[];
+    pageIndex: number;
 }
 
 export interface PlaceResult {
@@ -55,29 +61,63 @@ function shuffled<T>(items: readonly T[], rng: () => number): T[] {
     return result;
 }
 
+// 依 sizes 把題目切成幾頁，每頁的卡片另外打亂
+function splitPages(
+    rounds: readonly PairRound[],
+    sizes: readonly number[],
+    rng: () => number,
+): MatchPage[] {
+    let start = 0;
+    return sizes.map((size) => {
+        const slots = rounds.slice(start, start + size);
+        start += size;
+        return { slots, cards: shuffled(slots, rng) };
+    });
+}
+
+function sameSlots(a: readonly MatchPage[], b: readonly MatchPage[]): boolean {
+    return (
+        a.length === b.length &&
+        a.every(
+            (page, i) =>
+                page.slots.length === b[i].slots.length &&
+                page.slots.every(
+                    (slot, j) => slot.entryId === b[i].slots[j].entryId,
+                ),
+        )
+    );
+}
+
 // 配對的進行狀態，不碰 DOM，方便測試。放錯的卡片退回，可以再放；每題以第一次放上去的卡片計分。
 export class MatchSession {
-    readonly pages: MatchPage[];
+    private pageList: MatchPage[];
     pageIndex = 0;
     score = 0;
     private readonly matched = new Set<string>();
     private readonly tried = new Set<string>();
 
-    constructor(rounds: PairRound[], perPage: number, rng: () => number) {
-        let start = 0;
-        this.pages = pageSizes(rounds.length, perPage).map((size) => {
-            const slots = rounds.slice(start, start + size);
-            start += size;
-            return { slots, cards: shuffled(slots, rng) };
-        });
+    constructor(
+        rounds: readonly PairRound[],
+        perPage: number,
+        rng: () => number,
+    ) {
+        this.pageList = splitPages(
+            rounds,
+            pageSizes(rounds.length, perPage),
+            rng,
+        );
+    }
+
+    get pages(): readonly MatchPage[] {
+        return this.pageList;
     }
 
     get page(): MatchPage | undefined {
-        return this.pages[this.pageIndex];
+        return this.pageList[this.pageIndex];
     }
 
     get finished(): boolean {
-        return this.pageIndex >= this.pages.length;
+        return this.pageIndex >= this.pageList.length;
     }
 
     get pageComplete(): boolean {
@@ -129,6 +169,82 @@ export class MatchSession {
         if (this.pageComplete) {
             this.pageIndex++;
         }
+    }
+
+    // 畫面大小改變後（轉向、調整視窗）依新的每頁組數重新分頁，進度照舊：
+    // - 已經配完的頁不動；配好的題目仍然算配好、只算一次，分數與作答紀錄都不變。
+    // - 這一頁配好的留在這一頁；還沒配的（這一頁剩下的，接著後面幾頁的）依原本的順序排在後面，
+    //   連同配好的一起用 pageSizes() 平均分頁。
+    // - 這一頁配好的已經佔滿新的第一頁時（例如直向配好 4 組才轉成橫放、一頁只放 3 組），
+    //   這一頁就算配完、直接換到下一頁，還沒配的另外平均分頁。
+    // 分頁沒有改變時什麼都不動（卡片的順序也不變），回傳 false。
+    refit(perPage: number, rng: () => number): boolean {
+        const page = this.page;
+        if (!page) {
+            return false;
+        }
+        const matchedHere = page.slots.filter((slot) =>
+            this.matched.has(slot.entryId),
+        );
+        const rest = [
+            ...page.slots.filter((slot) => !this.matched.has(slot.entryId)),
+            ...this.pageList
+                .slice(this.pageIndex + 1)
+                .flatMap((later) => later.slots),
+        ];
+        if (rest.length === 0) {
+            return false;
+        }
+
+        const sizes = pageSizes(matchedHere.length + rest.length, perPage);
+        let pageIndex = this.pageIndex;
+        let pages: MatchPage[];
+        if (matchedHere.length < sizes[0]) {
+            const fill = sizes[0] - matchedHere.length;
+            const slots = [...matchedHere, ...rest.slice(0, fill)];
+            pages = [
+                { slots, cards: shuffled(slots, rng) },
+                ...splitPages(rest.slice(fill), sizes.slice(1), rng),
+            ];
+        } else {
+            pages = [
+                {
+                    slots: matchedHere,
+                    cards: page.cards.filter((card) =>
+                        this.matched.has(card.entryId),
+                    ),
+                },
+                ...splitPages(rest, pageSizes(rest.length, perPage), rng),
+            ];
+            pageIndex++;
+        }
+
+        const next = [...this.pageList.slice(0, this.pageIndex), ...pages];
+        if (pageIndex === this.pageIndex && sameSlots(this.pageList, next)) {
+            return false;
+        }
+        this.pageList = next;
+        this.pageIndex = pageIndex;
+        return true;
+    }
+
+    get layout(): MatchLayout {
+        return { pages: this.pageList, pageIndex: this.pageIndex };
+    }
+
+    // 分頁是不是和 layout 一樣（哪一頁、每頁哪些題目；卡片的順序不比）
+    sameLayout(layout: MatchLayout): boolean {
+        return (
+            this.pageIndex === layout.pageIndex &&
+            sameSlots(this.pageList, layout.pages)
+        );
+    }
+
+    // 回到之前的分頁。只能在 refit() 之後、還沒有放過卡片時用：中間放過卡片的話，
+    // 那次作答的 presented 就不是這份分頁的卡片了
+    restore(layout: MatchLayout): void {
+        this.pageList = [...layout.pages];
+        this.pageIndex = layout.pageIndex;
     }
 }
 

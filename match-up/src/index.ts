@@ -7,6 +7,7 @@ import type {
 import { meta } from './meta';
 import type { MatchUpOptions } from './meta';
 import { MatchSession, fitPairsPerPage, pairRounds } from './session';
+import type { PairRound } from './session';
 import './style.css';
 
 export type { MatchUpOptions } from './meta';
@@ -15,6 +16,11 @@ export type { MatchUpOptions } from './meta';
 const DRAG_THRESHOLD = 8;
 const WRONG_FLASH_MS = 700;
 const NEXT_PAGE_DELAY_MS = 1000;
+// 遊戲區的寬或高改變超過這麼多 px 才重新分頁（轉向、調整視窗、分割畫面）；
+// 更小的變動（捲軸出現、手機的網址列）不理，免得玩到一半卡片重排
+const REFIT_MIN_CHANGE_PX = 32;
+// 轉向時尺寸會連續變動幾次，等它停下來再量
+const REFIT_DEBOUNCE_MS = 150;
 
 function el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
@@ -67,8 +73,8 @@ function mount(
 ): GameInstance {
     const options = { ...meta.defaultOptions, ...ctx.options };
     const rounds = pairRounds(ctx.rounds);
-    // 每頁幾組要等畫面建好、量過放不放得下才確定（見下方 fitPairsPerPage）
-    let session = new MatchSession(rounds, options.pairsPerPage, ctx.rng);
+    // 每頁幾組要等畫面建好、量過放不放得下才確定（見下方 fit()）
+    const session = new MatchSession(rounds, options.pairsPerPage, ctx.rng);
     const startedAt = performance.now();
     let lastAnswerAt = startedAt;
     let paused = false;
@@ -78,6 +84,11 @@ function mount(
     let selected: HTMLButtonElement | null = null;
     let drag: Drag | null = null;
     const timers = new Set<ReturnType<typeof setTimeout>>();
+    // 上一次決定每頁組數時遊戲區的大小；尺寸改變時正在拖曳或正要換頁，等結束再重新分頁
+    let fittedWidth = 0;
+    let fittedHeight = 0;
+    let refitTimer: ReturnType<typeof setTimeout> | undefined;
+    let refitWanted = false;
 
     const later = (callback: () => void, ms: number) => {
         const id = setTimeout(() => {
@@ -207,14 +218,12 @@ function mount(
         }
 
         // 配好的卡片放進那一題；原位留下看不見的空位，其他卡片不會跟著移動
-        const placed = card.cloneNode(true) as HTMLButtonElement;
-        placed.className = 'kq-match__card is-placed';
-        placed.disabled = true;
-        placed.removeAttribute('aria-pressed');
-        placed.style.transform = '';
-        const zone = row.querySelector('.kq-match__zone');
-        zone?.replaceChildren(placed, el('span', 'kq-match__mark', '✓'));
-        row.classList.add('is-matched');
+        const slot = session.page?.slots.find(
+            (candidate) => candidate.entryId === slotId,
+        );
+        if (slot) {
+            placeInto(row, slot, false);
+        }
         card.style.transform = '';
         card.classList.remove('is-dragging');
         card.classList.add('is-used');
@@ -222,9 +231,7 @@ function mount(
         card.tabIndex = -1;
         card.setAttribute('aria-hidden', 'true');
 
-        const audio = session.page?.slots.find(
-            (slot) => slot.entryId === slotId,
-        )?.left.audio;
+        const audio = slot?.left.audio;
         if (audio) {
             ctx.audio.stopAll();
             void ctx.audio.play(audio).catch(() => undefined);
@@ -253,7 +260,7 @@ function mount(
         if (session.finished) {
             finish();
         } else {
-            renderPage();
+            startPage();
         }
     }
 
@@ -270,7 +277,27 @@ function mount(
         });
     }
 
-    function renderRow(slot: { entryId: string; left: Face }): HTMLElement {
+    // 配好的卡片放進那一題旁邊的空格，不能再拖。重新畫這一頁（轉向後重新分頁）時放回去的
+    // 不再播放放上去的動畫
+    function placeInto(
+        row: HTMLElement,
+        slot: PairRound,
+        restored: boolean,
+    ): void {
+        const placed = el('button', 'kq-match__card is-placed');
+        placed.type = 'button';
+        placed.disabled = true;
+        placed.dataset.entryId = slot.entryId;
+        placed.classList.toggle('is-restored', restored);
+        placed.append(renderFace(slot.right, 'kq-match__face'));
+        row.querySelector('.kq-match__zone')?.replaceChildren(
+            placed,
+            el('span', 'kq-match__mark', '✓'),
+        );
+        row.classList.add('is-matched');
+    }
+
+    function renderRow(slot: PairRound): HTMLElement {
         const row = el('div', 'kq-match__row');
         row.dataset.entryId = slot.entryId;
         const prompt = renderFace(slot.left, 'kq-match__prompt');
@@ -293,6 +320,9 @@ function mount(
         drop.type = 'button';
         zone.append(drop);
         row.append(prompt, zone);
+        if (session.isMatched(slot.entryId)) {
+            placeInto(row, slot, true);
+        }
         // 點選模式：先點卡片，再點這一題（整列都可以點）
         row.addEventListener('click', () => {
             if (paused || finished || row.classList.contains('is-matched')) {
@@ -307,7 +337,7 @@ function mount(
         return row;
     }
 
-    function renderCard(card: { entryId: string; right: Face }): HTMLElement {
+    function renderCard(card: PairRound): HTMLElement {
         const button = el('button', 'kq-match__card');
         button.type = 'button';
         button.dataset.entryId = card.entryId;
@@ -371,17 +401,22 @@ function mount(
             }
             const wasActive = drag.active;
             drag = null;
-            if (!wasActive) {
-                return;
+            if (wasActive) {
+                justDragged = true;
+                button.classList.remove('is-dragging');
+                highlight(null);
+                const row = cancelled
+                    ? null
+                    : rowAt(event.clientX, event.clientY);
+                if (row && !paused) {
+                    attempt(button, row, true);
+                } else {
+                    returnCard(button, true);
+                }
             }
-            justDragged = true;
-            button.classList.remove('is-dragging');
-            highlight(null);
-            const row = cancelled ? null : rowAt(event.clientX, event.clientY);
-            if (row && !paused) {
-                attempt(button, row, true);
-            } else {
-                returnCard(button, true);
+            // 拖曳時畫面大小改變了：現在才重新分頁
+            if (refitWanted) {
+                refitIfNeeded();
             }
         };
         button.addEventListener('pointerup', (event) => endDrag(event, false));
@@ -391,6 +426,8 @@ function mount(
         return button;
     }
 
+    // 畫出這一頁，包括已經配好的題目。配好的卡片不放回卡片區：玩的時候留下空位是為了其他卡片
+    // 不要移動，重新畫整頁時沒有這個問題，少占一點位置
     function renderPage(): void {
         const page = session.page;
         if (!page) {
@@ -398,9 +435,19 @@ function mount(
         }
         select(null);
         rows.replaceChildren(...page.slots.map(renderRow));
-        pool.replaceChildren(...page.cards.map(renderCard));
-        say('把卡片拖到對應的題目旁邊', 'info');
+        pool.replaceChildren(
+            ...page.cards
+                .filter((card) => !session.isMatched(card.entryId))
+                .map(renderCard),
+        );
         updateProgress();
+    }
+
+    // 新的一頁：畫出來、依畫面大小決定組數，重新計時
+    function startPage(): void {
+        renderPage();
+        fit();
+        say('把卡片拖到對應的題目旁邊', 'info');
         lastAnswerAt = performance.now();
     }
 
@@ -411,6 +458,59 @@ function mount(
             root.scrollHeight <= root.clientHeight + 1
         );
     }
+
+    // 老師設定的是每頁「最多」幾組：手機等小畫面放不下時減少組數，讓同一頁的題目與卡片
+    // 都在畫面內，拖曳時不必捲動（docs/SPEC.md 7.5）。每試一種組數就重新分頁、畫出來量一次
+    // （進度照舊，見 MatchSession.refit()）；試到最後分頁和原本一樣時換回原本的，卡片的順序才不會變
+    function fit(): void {
+        refitWanted = false;
+        const before = session.layout;
+        let changed = false;
+        fitPairsPerPage(options.pairsPerPage, (perPage) => {
+            if (session.refit(perPage, ctx.rng)) {
+                changed = true;
+                renderPage();
+            }
+            return fitsScreen();
+        });
+        if (changed && session.sameLayout(before)) {
+            session.restore(before);
+            renderPage();
+        }
+        fittedWidth = root.clientWidth;
+        fittedHeight = root.clientHeight;
+    }
+
+    // 遊戲區的大小改變了（轉向、調整視窗）：變動夠大才重新分頁；拖曳中或這一頁剛配完、
+    // 正要換頁時先不動，等拖曳結束或下一頁出現再做（下一頁本來就會重新量）
+    function refitIfNeeded(): void {
+        clearTimeout(refitTimer);
+        refitTimer = undefined;
+        if (finished || session.finished || root.clientHeight === 0) {
+            return;
+        }
+        if (
+            Math.abs(root.clientWidth - fittedWidth) < REFIT_MIN_CHANGE_PX &&
+            Math.abs(root.clientHeight - fittedHeight) < REFIT_MIN_CHANGE_PX
+        ) {
+            return;
+        }
+        if (drag || pendingNextPage) {
+            refitWanted = true;
+            return;
+        }
+        fit();
+    }
+
+    // 量的是遊戲自己的根元素（和 CSS 的 container 一樣）；它的大小由宿主的遊戲區決定，
+    // 不隨內容改變，重新分頁不會再觸發一次。觀察前先量好第一次的大小，第一次的回呼才不會算成改變
+    const resize =
+        typeof ResizeObserver === 'undefined'
+            ? null
+            : new ResizeObserver(() => {
+                  clearTimeout(refitTimer);
+                  refitTimer = setTimeout(refitIfNeeded, REFIT_DEBOUNCE_MS);
+              });
 
     function onKey(event: KeyboardEvent): void {
         if (event.key === 'Escape' && selected) {
@@ -423,17 +523,14 @@ function mount(
     if (session.finished) {
         finish();
     } else {
-        // 老師設定的是每頁「最多」幾組：手機等小畫面放不下時減少組數，讓同一頁的題目與卡片
-        // 都在畫面內，拖曳時不必捲動（docs/SPEC.md 7.5）。組數一旦決定就不再隨轉向改變
-        fitPairsPerPage(options.pairsPerPage, (perPage) => {
-            session = new MatchSession(rounds, perPage, ctx.rng);
-            renderPage();
-            return fitsScreen();
-        });
+        startPage();
+        resize?.observe(root);
     }
 
     return {
         destroy() {
+            resize?.disconnect();
+            clearTimeout(refitTimer);
             clearTimeout(nextPageTimer);
             for (const id of timers) {
                 clearTimeout(id);
@@ -453,6 +550,10 @@ function mount(
             }
             drag = null;
             clearTimeout(nextPageTimer);
+            // 拖曳被暫停打斷了，之前等著的重新分頁現在可以做
+            if (refitWanted) {
+                refitIfNeeded();
+            }
         },
         resume() {
             paused = false;

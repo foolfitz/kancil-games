@@ -298,6 +298,11 @@
     animation: kq-match-pop 0.25s ease-out;
 }
 
+/* 轉向後重新畫這一頁時放回去的卡片：本來就在那裡，不再播放放上去的動畫 */
+.kq-match__card.is-placed.is-restored {
+    animation: none;
+}
+
 .kq-match__card:disabled {
     color: inherit;
 }
