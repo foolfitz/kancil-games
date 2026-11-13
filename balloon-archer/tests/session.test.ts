@@ -5,15 +5,14 @@ import type { KancilSet } from '@kancil-quiz/schema';
 import { describe, expect, it } from 'vite-plus/test';
 import { meta, normalizeOptions } from '../src/meta';
 import {
-    MIN_PULL,
+    DRAW_MS,
     arrowSpeed,
     clampY,
     firstHit,
     laneCount,
     laneX,
-    pullOf,
+    pullAt,
     riseMs,
-    willShoot,
 } from '../src/session';
 
 // 星星、輪次、一批一批的目標與倒數在 @kancil-quiz/arcade，測試也在那裡（kancil-games/arcade/tests）。
@@ -24,17 +23,16 @@ const fixtures = import.meta.glob<KancilSet>(
     { eager: true, import: 'default' },
 );
 
-describe('willShoot() 與 pullOf()', () => {
-    it('往左拉夠遠才射，往右拉不算', () => {
-        expect(willShoot(-MIN_PULL)).toBe(true);
-        expect(willShoot(-(MIN_PULL - 1))).toBe(false);
-        expect(willShoot(80)).toBe(false);
+describe('pullAt()', () => {
+    it('弓弦拉了多少：按住越久拉得越開，最多拉滿', () => {
+        expect(pullAt(0)).toBe(0);
+        expect(pullAt(DRAW_MS / 2)).toBe(0.5);
+        expect(pullAt(DRAW_MS)).toBe(1);
+        expect(pullAt(DRAW_MS * 3)).toBe(1);
     });
 
-    it('弓弦拉了多少：往左拉的距離，最多拉滿', () => {
-        expect(pullOf(-45, 90)).toBe(0.5);
-        expect(pullOf(-200, 90)).toBe(1);
-        expect(pullOf(30, 90)).toBe(0);
+    it('時間差是負的（動畫的時間戳記比按下的時候早一點）當作還沒拉', () => {
+        expect(pullAt(-5)).toBe(0);
     });
 });
 

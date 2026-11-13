@@ -32,6 +32,8 @@
     -webkit-tap-highlight-color: transparent;
     user-select: none;
     -webkit-user-select: none;
+    /* 按住拉弓：iPad 長按不跳出選單 */
+    -webkit-touch-callout: none;
 }
 
 .kq-archer *,

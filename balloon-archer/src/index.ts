@@ -20,9 +20,8 @@ import {
     firstHit,
     laneCount,
     laneX,
-    pullOf,
+    pullAt,
     riseMs,
-    willShoot,
 } from './session';
 import type { Ellipse } from './session';
 import './style.css';
@@ -54,8 +53,6 @@ const MAX_ARROWS = 3;
 const KEY_STEP = 0.05;
 /** 鍵盤移動之後，瞄準線顯示多久 */
 const KEY_GUIDE_MS = 1500;
-/** 往左拉多遠算拉滿（像素） */
-const FULL_PULL = 90;
 /** 弓的中心在弓箭手那一格的高度比例（style.css 的 .kq-archer__bow 也照這個放） */
 const BOW_AT = 0.45;
 /** 氣球的顏色有幾種（.kq-archer__balloon--0 到 --5） */
@@ -206,10 +203,12 @@ function mount(
     let speed = 0;
     let arrowLength = 48;
 
-    // 弓箭手的高度（弓的中心）。按住時跟著手指上下移動，往左拉弓，放開就射
+    // 弓箭手的高度（弓的中心）。滑鼠、觸控按在哪個高度就站在哪裡，按住時跟著上下移動；
+    // 按住（鍵盤是按住空白鍵）就拉弓，放開就射
     let bowY = 0;
     let pull = 0;
-    let drag: { id: number; x: number } | null = null;
+    /** 正在拉弓：哪個滑鼠或手指（鍵盤是 null）、從什麼時候開始按住 */
+    let draw: { pointerId: number | null; since: number } | null = null;
 
     const root = el('div', 'kq-archer');
     root.lang = ctx.language;
@@ -235,11 +234,7 @@ function mount(
     const bowString =
         player.querySelector<SVGPolylineElement>('.kq-archer__string');
     const nock = player.querySelector<SVGGElement>('.kq-archer__nock');
-    const hint = el(
-        'div',
-        'kq-archer__hint',
-        '按住上下移動，往左拉弓，放開就射箭',
-    );
+    const hint = el('div', 'kq-archer__hint', '按住拉弓，放開就射箭');
     field.append(sky, guide, ground, pole, player, hint);
 
     const rotate = el('div', 'kq-archer__rotate');
@@ -286,6 +281,9 @@ function mount(
         pole.style.left = `${player.offsetLeft + player.offsetWidth * 0.36 - pole.offsetWidth / 2}px`;
         minY = playerHeight * BOW_AT + 4;
         maxY = groundTop - playerHeight * (1 - BOW_AT);
+        // E2E 瞄準用：弓箭手能站的高度（放開就會射，不能先按下去試站不站得到）
+        root.dataset.bowMin = String(Math.ceil(minY));
+        root.dataset.bowMax = String(Math.floor(Math.max(minY, maxY)));
         const box = field.getBoundingClientRect();
         const bowBox = bow?.getBoundingClientRect();
         bowX = bowBox
@@ -635,6 +633,15 @@ function mount(
             return;
         }
 
+        // 按住越久，弓弦拉得越開
+        if (draw) {
+            const next = pullAt(now - draw.since);
+            if (next !== pull) {
+                pull = next;
+                renderBow();
+            }
+        }
+
         for (const balloon of balloons) {
             balloon.y -= balloon.vy * dt;
             if (balloon.y + balloon.h * 1.5 < 0) {
@@ -694,51 +701,64 @@ function mount(
         return event.clientY - field.getBoundingClientRect().top;
     }
 
+    // 開始拉弓（滑鼠、觸控是 pointerId，鍵盤是 null）
+    function startDraw(pointerId: number | null): void {
+        draw = { pointerId, since: performance.now() };
+        pull = 0;
+        showGuide(true);
+    }
+
+    // 不射就停止拉弓（宿主暫停、手指被系統取消、視窗失去焦點）
+    function stopDraw(): void {
+        draw = null;
+        pull = 0;
+        showGuide(false);
+    }
+
+    // 放開：不論拉了多久都射
+    function release(): void {
+        stopDraw();
+        fire();
+    }
+
     function onPointerDown(event: PointerEvent): void {
-        if (!active || finished || event.button !== 0) {
+        // 已經在拉弓（另一根手指或空白鍵）時不理會
+        if (!active || finished || event.button !== 0 || draw) {
             return;
         }
         event.preventDefault();
         field.setPointerCapture?.(event.pointerId);
-        drag = { id: event.pointerId, x: event.clientX };
         bowY = clampY(pointerY(event), minY, maxY);
-        showGuide(true);
+        startDraw(event.pointerId);
     }
 
     function onPointerMove(event: PointerEvent): void {
-        if (!drag || event.pointerId !== drag.id) {
+        if (draw?.pointerId !== event.pointerId) {
             return;
         }
         bowY = clampY(pointerY(event), minY, maxY);
-        pull = pullOf(event.clientX - drag.x, FULL_PULL);
         renderBow();
     }
 
     function onPointerUp(event: PointerEvent): void {
-        if (!drag || event.pointerId !== drag.id) {
+        if (draw?.pointerId !== event.pointerId) {
             return;
         }
-        const shoot = willShoot(event.clientX - drag.x);
         bowY = clampY(pointerY(event), minY, maxY);
-        drag = null;
-        pull = 0;
-        showGuide(false);
-        if (shoot) {
-            fire();
+        release();
+    }
+
+    function onPointerCancel(event: PointerEvent): void {
+        if (draw?.pointerId === event.pointerId) {
+            stopDraw();
         }
     }
 
-    function onPointerCancel(): void {
-        drag = null;
-        pull = 0;
-        showGuide(false);
-    }
-
-    function onKey(event: KeyboardEvent): void {
+    // 鍵盤：↑ ↓ 移動弓箭手，按住空白鍵拉弓、放開就射
+    function onKeyDown(event: KeyboardEvent): void {
         if (!active || finished || event.altKey || event.ctrlKey) {
             return;
         }
-        const onButton = event.target instanceof HTMLButtonElement;
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
             event.preventDefault();
             const step = height * KEY_STEP;
@@ -749,13 +769,36 @@ function mount(
             );
             showGuide(true);
             clearTimeout(guideTimer);
-            guideTimer = setTimeout(() => showGuide(false), KEY_GUIDE_MS);
+            // 還按著空白鍵時，瞄準線留著
+            guideTimer = setTimeout(() => {
+                if (!draw) {
+                    showGuide(false);
+                }
+            }, KEY_GUIDE_MS);
         } else if (
-            event.key === 'ArrowRight' ||
-            (!onButton && (event.key === ' ' || event.key === 'Enter'))
+            event.key === ' ' &&
+            // 焦點在按鈕（例如「再聽一次」）上時，空白鍵是按那個按鈕
+            !(event.target instanceof HTMLButtonElement)
         ) {
             event.preventDefault();
-            fire();
+            // 按住不放時鍵盤會一直重複送 keydown，只有第一次算
+            if (!event.repeat && !draw) {
+                startDraw(null);
+            }
+        }
+    }
+
+    function onKeyUp(event: KeyboardEvent): void {
+        if (event.key === ' ' && draw?.pointerId === null) {
+            event.preventDefault();
+            release();
+        }
+    }
+
+    // 按著空白鍵切到別的視窗，就收不到放開的 keyup：取消拉弓，不射
+    function onBlur(): void {
+        if (draw?.pointerId === null) {
+            stopDraw();
         }
     }
 
@@ -792,9 +835,7 @@ function mount(
             tickTimer = undefined;
             cancelAnimationFrame(frameId);
             clearTimers();
-            drag = null;
-            pull = 0;
-            showGuide(false);
+            stopDraw();
             ctx.audio.stopAll();
         }
     }
@@ -848,7 +889,11 @@ function mount(
     field.addEventListener('pointermove', onPointerMove);
     field.addEventListener('pointerup', onPointerUp);
     field.addEventListener('pointercancel', onPointerCancel);
-    document.addEventListener('keydown', onKey);
+    // 長按時不跳出選單（Android、Windows 觸控的長按，以及滑鼠右鍵）
+    field.addEventListener('contextmenu', (event) => event.preventDefault());
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
     const resize = new ResizeObserver(() => {
         checkOrientation();
         measure();
@@ -879,7 +924,9 @@ function mount(
             clearTimeout(toastTimer);
             clearTimeout(guideTimer);
             resize.disconnect();
-            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('keydown', onKeyDown);
+            document.removeEventListener('keyup', onKeyUp);
+            window.removeEventListener('blur', onBlur);
             ctx.audio.stopAll();
             root.remove();
         },

@@ -17,17 +17,15 @@ export function riseMs(speed: Speed, lap: number): number {
     return Math.round(RISE_MS[speed] * lapFactor(lap));
 }
 
-/** 往左拉多遠（像素）才算拉弓；拉得太短，放開時不射，只是移動弓箭手 */
-export const MIN_PULL = 16;
+/** 按住多久（毫秒）把弓拉滿 */
+export const DRAW_MS = 300;
 
-/** 放開時射不射：往左拉夠遠才射（往右拉不算） */
-export function willShoot(dx: number): boolean {
-    return -dx >= MIN_PULL;
-}
-
-/** 弓弦拉了多少（0 到 1），只影響弓弦的樣子，不影響箭的速度 */
-export function pullOf(dx: number, full: number): number {
-    return Math.min(1, Math.max(0, -dx) / full);
+/**
+ * 按住 heldMs 之後弓弦拉了多少（0 到 1）。只影響弓弦的樣子：放開時不論拉了多少都射，
+ * 箭的速度也一樣，只點一下也會射出去
+ */
+export function pullAt(heldMs: number): number {
+    return Math.min(1, Math.max(0, heldMs) / DRAW_MS);
 }
 
 /** 弓箭手的高度限制在 min 到 max 之間 */

@@ -26,10 +26,17 @@ const defaultOptions: BalloonArcherOptions = { seconds: 60, speed: 'slow' };
 // 遊戲的設定資訊，不含執行程式；老師端與伺服器端的遊戲清單（manifest.json）都由此產生。
 export const meta = {
     id: 'balloon-archer',
-    version: '0.1.0',
+    version: '0.2.0',
     title: { 'zh-TW': '射氣球' },
     // 星星（起始 3 顆，射中正解 +1、射中錯的 −1）是遊戲得分，顯示在學生的結果頁與老師的成績頁
     scoreLabel: { 'zh-TW': '星星' },
+    // 宿主的開始畫面列出的操作說明
+    howTo: {
+        'zh-TW': [
+            '滑鼠、觸控：在想要的高度按住拉弓，放開就射箭；按住時可以上下移動',
+            '鍵盤：↑ ↓ 移動，按住空白鍵拉弓，放開就射箭',
+        ],
+    },
     requires: {
         shape: 'mcq',
         minRounds: 1,
